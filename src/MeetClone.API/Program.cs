@@ -1,9 +1,11 @@
+using MeetClone.API.Hubs;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+//builder.Services.AddEndpointsApiExplorer();
+//builder.Services.AddSwaggerGen();
 builder.Services.AddSignalR();
 
 builder.Services.AddCors(options =>
@@ -11,9 +13,9 @@ builder.Services.AddCors(options =>
     options.AddDefaultPolicy(
         builder =>
         {
-            builder.WithOrigins("https://localhost:7134")
+            builder.WithOrigins("https://localhost:5173", "http://localhost:5173")
                 .AllowAnyHeader()
-                .WithMethods("GET", "POST")
+                .AllowAnyMethod()
                 .AllowCredentials();
         });
 });
@@ -21,13 +23,13 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+//if (app.Environment.IsDevelopment())
+//{
+//    app.UseSwagger();
+//    app.UseSwaggerUI();
+//}
 
-app.UseHttpsRedirection();
+//app.UseHttpsRedirection();
 app.UseCors();
 
 app.MapHub<MeetingHub>("/meetingHub");
