@@ -5,27 +5,61 @@ import './App.css'
 
 function App() {
   const [connection, setConnection] = useState<signalR.HubConnection | null>(null)
+  const [meetingCode, setMeetingCode] = useState<string>('')
+  const [isConnected, setIsConnected] = useState<boolean>(false)
 
   useEffect(() => {
-    const newConnection = new signalR.HubConnectionBuilder()
-      .withUrl("https://localhost:7034/meetingHub", {})
-      .build()
+    if (!connection) {
+      const newConnection = new signalR.HubConnectionBuilder()
+        .withUrl("https://localhost:7034/meetingHub", {})
+        .build()
 
-    setConnection(newConnection)
+      setConnection(newConnection)
 
-    newConnection.start()
-      .then(() => {
-        console.log("connected to the hub")
+      newConnection.start()
+        .then(() => {
+          console.log("connected to the hub")
+        })
+        .catch(e => console.log("connection failed: ", e))
+    }
+  }, [connection]);
 
-        newConnection.on("ReceiveMessage", (message: string) => {
-          console.log("received message: ", message)
-        });
-      })
-      .catch(e => console.log("connection failed: ", e))
-  }, []);
+  const toggleConnect = () => {
+    if (isConnected) {
+      leaveMeeting()
+      setIsConnected(false)
+    }
+    else {
+      joinMeeting()
+      setIsConnected(true)
+    }
+
+  }
+
+  const joinMeeting = () => {
+
+  }
+
+  const leaveMeeting = () => {
+
+  }
 
   return (
     <>
+      <h1>Meeting client</h1>
+      <div>
+        <label htmlFor="meetingPin">Enter Meeting Pin:</label>
+        <input
+          type="text"
+          id="meetingPin"
+          value={meetingCode}
+          onChange={(e) => setMeetingCode(e.target.value)}
+          placeholder="Enter pin"
+        />
+        <button onClick={toggleConnect}>
+          Connect
+        </button>
+      </div>
 
 
 
