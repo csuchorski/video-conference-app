@@ -19,6 +19,7 @@ function App() {
       newConnection.start()
         .then(() => {
           console.log("connected to the hub")
+          newConnection.on("ReceiveMessage", (message: string) => handleReceiveMessage(message))
         })
         .catch(e => console.log("connection failed: ", e))
     }
@@ -27,21 +28,24 @@ function App() {
   const toggleConnect = () => {
     if (isConnected) {
       leaveMeeting()
-      setIsConnected(false)
     }
     else {
       joinMeeting()
-      setIsConnected(true)
     }
 
   }
 
   const joinMeeting = () => {
+    connection?.invoke("JoinMeeting", connection.connectionId, meetingCode).then(() => { setIsConnected(true) })
 
   }
 
   const leaveMeeting = () => {
+    connection?.invoke("LeaveMeeting", connection.connectionId, meetingCode).then(() => { setIsConnected(false) })
+  }
 
+  const handleReceiveMessage = (message: string) => {
+    console.log(message)
   }
 
   return (
@@ -57,7 +61,7 @@ function App() {
           placeholder="Enter pin"
         />
         <button onClick={toggleConnect}>
-          Connect
+          {!isConnected ? "Connect" : "Disconnect"}
         </button>
       </div>
 
