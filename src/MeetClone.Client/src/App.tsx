@@ -2,14 +2,14 @@ import {useEffect, useState} from 'react'
 import * as signalR from '@microsoft/signalr'
 
 import './App.css'
-import ChatBox from './ChatBox'
-import type {ChatMessage} from "./types.ts";
+import ChatBox from './components/ChatBox/ChatBox.tsx'
+import type {ChatMessage} from "./types/chatMessage.ts";
 
 function App() {
     const [connection, setConnection] = useState<signalR.HubConnection | null>(null)
     const [meetingCode, setMeetingCode] = useState<string>('')
     const [isConnected, setIsConnected] = useState<boolean>(false)
-    const [messageList, setMessageList] = useState<Array<ChatMessage>>([])
+    const [messages, setMessages] = useState<Array<ChatMessage>>([])
 
 
     useEffect(() => {
@@ -61,7 +61,11 @@ function App() {
     }
 
     const handleReceiveMessage = (message: ChatMessage) => {
-        setMessageList(prevList => [...prevList, message])
+        setMessages(prevList => [...prevList, message])
+    }
+
+    const sendMessage = (message: string) => {
+        connection?.invoke("SendMessageToMeeting", connection?.connectionId, meetingCode, message)
     }
 
     return (
@@ -80,7 +84,7 @@ function App() {
                     {!isConnected ? "Connect" : "Disconnect"}
                 </button>
             </div>
-            <ChatBox messageList={messageList}/>
+            <ChatBox messages={messages} onSend={sendMessage}/>
 
 
         </>
