@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import type {ChatMessage} from './types.ts';
 
-function ChatBox(props: { messageList: Array<string> }) {
-    const messageListComponent = props.messageList.map((message, idx) => <li key={idx}>{message}</li>)
+function ChatBox(props: { messageList: Array<ChatMessage> }) {
+    const messageListComponent = props.messageList.map((message, idx) => <li
+        key={idx}>{message.sender}: {message.content}</li>)
 
     return (
         <>
