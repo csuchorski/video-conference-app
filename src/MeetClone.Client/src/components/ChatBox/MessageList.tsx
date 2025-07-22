@@ -1,12 +1,11 @@
-import type {ChatMessage} from '../types.ts';
+import type {ChatMessage} from '../../types/chatMessage.ts';
 
-function MessageList(props: { messageList: Array<ChatMessage> }) {
-    const messageListComponent = props.messageList.map((message, idx) => <li
+function MessageList(props: { messages: Array<ChatMessage> }) {
+    const messageListComponent = props.messages.map((message, idx) => <li
         key={idx}>{message.sender}: {message.content}</li>)
 
     return (
         <>
-            <h3>Chat</h3>
             <ul id='chatBoxMessageList'>
                 {messageListComponent}
             </ul>
