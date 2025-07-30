@@ -1,55 +1,79 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import ChatBox from "../components/ChatBox/ChatBox";
 import type { ChatMessage } from "../types/chatMessage";
-import type { HubConnection } from "@microsoft/signalr";
-import { useParams } from "react-router";
+import { HubConnectionState, type HubConnection } from "@microsoft/signalr";
+import { useNavigate, useParams } from "react-router";
 
 interface MeetingRoomProps {
-  connection: HubConnection;
+  connection: HubConnection | null;
 }
 
 export default function MeetingRoom({ connection }: MeetingRoomProps) {
+  const navigate = useNavigate();
   const { meetingId } = useParams();
-  const [messages, setMessages] = useState<Array<ChatMessage>>([]);
   const [isConnected, setIsConnected] = useState<boolean>(false);
+  const [messages, setMessages] = useState<Array<ChatMessage>>([]);
 
-  const joinMeeting = () => {
+  const joinMeeting = useCallback(() => {
+    if (!connection || !meetingId || isConnected) return;
+
     connection
       ?.invoke("JoinMeeting", connection.connectionId, meetingId)
       .then(() => {
         setIsConnected(true);
       });
-  };
+  }, [connection, meetingId, isConnected]);
 
-  const leaveMeeting = () => {
+  const leaveMeeting = useCallback(() => {
+    if (!connection || !meetingId || !isConnected) return;
+
     connection
       ?.invoke("LeaveMeeting", connection.connectionId, meetingId)
       .then(() => {
         setIsConnected(false);
       });
-  };
+  }, [connection, meetingId, isConnected]);
 
-  const handleReceiveMessage = (message: ChatMessage) => {
+  const handleReceiveMessage = useCallback((message: ChatMessage) => {
     setMessages((prevList) => [...prevList, message]);
-  };
+  }, []);
 
-  const sendMessage = (message: string) => {
-    connection?.invoke(
-      "SendMessageToMeeting",
-      connection?.connectionId,
-      meetingId,
-      message
-    );
-  };
+  const sendMessage = useCallback(
+    (message: string) => {
+      connection?.invoke(
+        "SendMessageToMeeting",
+        connection?.connectionId,
+        meetingId,
+        message
+      );
+    },
+    [connection, meetingId]
+  );
 
   useEffect(() => {
-    connection.on("ReceiveMessage", (sender: string, content: string) =>
-      handleReceiveMessage({
-        sender: sender,
-        content: content,
-      })
-    );
-  });
+    if (!connection || connection.state !== HubConnectionState.Connected) {
+      console.log("No connection in MeetingRoom");
+      navigate("/");
+      return;
+    }
+
+    joinMeeting();
+
+    connection?.on("ReceiveMessage", handleReceiveMessage);
+
+    return () => {
+      connection?.off("ReceiveMessage", handleReceiveMessage);
+      leaveMeeting();
+    };
+  }, [
+    connection,
+    meetingId,
+    navigate,
+    isConnected,
+    joinMeeting,
+    leaveMeeting,
+    handleReceiveMessage,
+  ]);
 
   return (
     <>

@@ -1,30 +1,11 @@
-import type { HubConnection } from "@microsoft/signalr";
 import { useState } from "react";
+import { useNavigate } from "react-router";
 
 export default function LandingPage() {
   const [meetingCode, setMeetingCode] = useState<string>("");
-  const [isConnected, setIsConnected] = useState<boolean>(false);
-
-  const toggleConnect = () => {
-    if (!isConnected) {
-      joinMeeting();
-    }
-  };
-
-  const joinMeeting = () => {
-    connection
-      ?.invoke("JoinMeeting", connection.connectionId, meetingCode)
-      .then(() => {
-        setIsConnected(true);
-      });
-  };
-
-  const leaveMeeting = () => {
-    connection
-      ?.invoke("LeaveMeeting", connection.connectionId, meetingCode)
-      .then(() => {
-        setIsConnected(false);
-      });
+  const navigate = useNavigate();
+  const connectToMeeting = () => {
+    navigate(`/meeting/${meetingCode}`);
   };
 
   return (
@@ -39,9 +20,7 @@ export default function LandingPage() {
           onChange={(e) => setMeetingCode(e.target.value)}
           placeholder="Enter pin"
         />
-        <button onClick={toggleConnect}>
-          {!isConnected ? "Connect" : "Disconnect"}
-        </button>
+        <button onClick={connectToMeeting}>Connect</button>
       </div>
     </>
   );
