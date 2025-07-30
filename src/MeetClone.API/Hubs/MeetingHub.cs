@@ -15,7 +15,7 @@ namespace MeetClone.API.Hubs
             await Groups.AddToGroupAsync(user, meetingId);
 
             string message = $"User {user} joined the meeting";
-            await Clients.Group(meetingId).SendAsync("ReceiveMessage", "SYSTEM", message);
+            await Clients.Group(meetingId).SendAsync("ReceiveMessage", new { sender = "SYSTEM", content = message });
         }
 
         public async Task LeaveMeeting(string user, string meetingId)
@@ -23,12 +23,12 @@ namespace MeetClone.API.Hubs
             await Groups.RemoveFromGroupAsync(user, meetingId);
 
             string message = $"User {user} left the meeting";
-            await Clients.Group(meetingId).SendAsync("ReceiveMessage", "SYSTEM", message);
+            await Clients.Group(meetingId).SendAsync("ReceiveMessage", new { sender = "SYSTEM", content = message });
         }
 
         public async Task SendMessageToMeeting(string user, string meetingId, string message)
         {
-            await Clients.Group(meetingId).SendAsync("ReceiveMessage", user, message);
+            await Clients.Group(meetingId).SendAsync("ReceiveMessage", new { sender = user, content = message });
         }
     }
 }
