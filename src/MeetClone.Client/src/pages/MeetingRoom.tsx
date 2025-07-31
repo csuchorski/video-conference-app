@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import ChatBox from "../components/ChatBox/ChatBox";
 import type { ChatMessage } from "../types/chatMessage";
 import { HubConnectionState, type HubConnection } from "@microsoft/signalr";
@@ -11,30 +11,35 @@ interface MeetingRoomProps {
 export default function MeetingRoom({ connection }: MeetingRoomProps) {
   const navigate = useNavigate();
   const { meetingId } = useParams();
-  const [isConnected, setIsConnected] = useState<boolean>(false);
+  const isConnected = useRef(false);
   const [messages, setMessages] = useState<Array<ChatMessage>>([]);
 
   const joinMeeting = useCallback(() => {
-    if (!connection || !meetingId || isConnected) return;
+    if (!connection || !meetingId) return;
+
+    console.log("Joining meeting");
 
     connection
       ?.invoke("JoinMeeting", connection.connectionId, meetingId)
       .then(() => {
-        setIsConnected(true);
+        isConnected.current = true;
       });
-  }, [connection, meetingId, isConnected]);
+  }, [connection, meetingId]);
 
   const leaveMeeting = useCallback(() => {
     if (!connection || !meetingId || !isConnected) return;
 
+    console.log("Leaving meeting");
+
     connection
       ?.invoke("LeaveMeeting", connection.connectionId, meetingId)
       .then(() => {
-        setIsConnected(false);
+        isConnected.current = false;
       });
   }, [connection, meetingId, isConnected]);
 
   const handleReceiveMessage = useCallback((message: ChatMessage) => {
+    console.log("Message received");
     setMessages((prevList) => [...prevList, message]);
   }, []);
 
@@ -57,7 +62,9 @@ export default function MeetingRoom({ connection }: MeetingRoomProps) {
       return;
     }
 
-    joinMeeting();
+    if (!isConnected.current) {
+      joinMeeting();
+    }
 
     connection?.on("ReceiveMessage", handleReceiveMessage);
 
@@ -68,8 +75,8 @@ export default function MeetingRoom({ connection }: MeetingRoomProps) {
   }, [
     connection,
     meetingId,
-    navigate,
     isConnected,
+    navigate,
     joinMeeting,
     leaveMeeting,
     handleReceiveMessage,
