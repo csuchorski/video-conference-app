@@ -4,6 +4,7 @@ import * as signalR from "@microsoft/signalr";
 
 import LandingPage from "./pages/LandingPage.tsx";
 import MeetingRoom from "./pages/MeetingRoom.tsx";
+import GlobalStyle from "./GlobalStyle.ts";
 
 function App() {
   const [connection, setConnection] = useState<signalR.HubConnection | null>(
@@ -28,15 +29,18 @@ function App() {
   }, [connection]);
 
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route
-          path="/meeting/:meetingId"
-          element={<MeetingRoom connection={connection} />}
-        />
-      </Routes>
-    </Router>
+    <>
+      <GlobalStyle />
+      <Router>
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route
+            path="/meeting/:meetingId"
+            element={<MeetingRoom connection={connection} />}
+          />
+        </Routes>
+      </Router>
+    </>
   );
 }
 
