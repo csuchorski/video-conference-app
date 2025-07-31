@@ -2,8 +2,6 @@ import { useEffect, useState } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router";
 import * as signalR from "@microsoft/signalr";
 
-import "./App.css";
-
 import LandingPage from "./pages/LandingPage.tsx";
 import MeetingRoom from "./pages/MeetingRoom.tsx";
 
