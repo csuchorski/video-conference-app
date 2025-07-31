@@ -1,8 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import ChatBox from "../components/ChatBox/ChatBox";
+import ChatBox from "../components/MeetingPage/ChatBox/ChatBox";
 import type { ChatMessage } from "../types/chatMessage";
 import { HubConnectionState, type HubConnection } from "@microsoft/signalr";
 import { useNavigate, useParams } from "react-router";
+import MeetingRoomStyled from "./MeetingRoom.styled";
+import { VideoContainer } from "../components/MeetingPage/VideoContainer.styled";
+import MeetingControlBar from "../components/MeetingPage/MeetingControlBar";
+import { MainContent } from "../components/MeetingPage/MainContent.styled";
+import { MeetingSidebar } from "../components/MeetingPage/MeetingSidebar.styled";
 
 interface MeetingRoomProps {
   connection: HubConnection | null;
@@ -83,8 +88,14 @@ export default function MeetingRoom({ connection }: MeetingRoomProps) {
   ]);
 
   return (
-    <>
-      <ChatBox messages={messages} onSend={sendMessage} />
-    </>
+    <MeetingRoomStyled>
+      <MainContent>
+        <VideoContainer></VideoContainer>
+        <MeetingSidebar>
+          <ChatBox messages={messages} onSend={sendMessage} />
+        </MeetingSidebar>
+      </MainContent>
+      <MeetingControlBar />
+    </MeetingRoomStyled>
   );
 }

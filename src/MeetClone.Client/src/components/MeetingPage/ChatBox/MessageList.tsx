@@ -1,4 +1,5 @@
-import type { ChatMessage } from "../../types/chatMessage.ts";
+import type { ChatMessage } from "../../../types/chatMessage.ts";
+import { MessageListStyled } from "./ChatBox.styled.tsx";
 
 function MessageList(props: { messages: Array<ChatMessage> }) {
   const messageListComponent = props.messages.map((message, idx) => (
@@ -8,9 +9,9 @@ function MessageList(props: { messages: Array<ChatMessage> }) {
   ));
 
   return (
-    <>
+    <MessageListStyled>
       <ul id="chatBoxMessageList">{messageListComponent}</ul>
-    </>
+    </MessageListStyled>
   );
 }
 
