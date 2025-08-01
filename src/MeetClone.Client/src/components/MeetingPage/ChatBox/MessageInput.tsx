@@ -13,11 +13,11 @@ function MessageInput({ onSend }: { onSend: (message: string) => void }) {
 
   return (
     <MessageInputStyled>
-      <input
-        type={"text"}
+      <textarea
         value={message}
         onChange={(e) => setMessage(e.target.value)}
         placeholder={"Write a message"}
+        rows={1}
       />
       <button onClick={handleSend}>Send</button>
     </MessageInputStyled>
