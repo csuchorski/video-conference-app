@@ -11,11 +11,19 @@ function MessageInput({ onSend }: { onSend: (message: string) => void }) {
     setMessage("");
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault(); // Prevent newline
+      handleSend();
+    }
+  };
+
   return (
     <MessageInputStyled>
       <textarea
         value={message}
         onChange={(e) => setMessage(e.target.value)}
+        onKeyDown={handleKeyDown}
         placeholder={"Write a message"}
         rows={1}
       />
