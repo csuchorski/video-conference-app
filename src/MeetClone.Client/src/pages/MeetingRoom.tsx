@@ -32,7 +32,7 @@ export default function MeetingRoom({ connection }: MeetingRoomProps) {
   }, [connection, meetingId]);
 
   const leaveMeeting = useCallback(() => {
-    if (!connection || !meetingId || !isConnected) return;
+    if (!connection || !meetingId || !isConnected.current) return;
 
     console.log("Leaving meeting");
 
@@ -40,9 +40,8 @@ export default function MeetingRoom({ connection }: MeetingRoomProps) {
       ?.invoke("LeaveMeeting", connection.connectionId, meetingId)
       .then(() => {
         isConnected.current = false;
+        navigate("/");
       });
-
-    navigate("/");
   }, [connection, meetingId, isConnected, navigate]);
 
   const handleReceiveMessage = useCallback((message: ChatMessage) => {

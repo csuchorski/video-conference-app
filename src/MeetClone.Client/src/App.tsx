@@ -16,7 +16,9 @@ function App() {
   useEffect(() => {
     if (!connection) {
       const newConnection = new signalR.HubConnectionBuilder()
-        .withUrl("https://localhost:7034/meetingHub", {})
+        .withUrl("http://localhost:5175/meetingHub", {})
+        .withAutomaticReconnect()
+        .configureLogging(signalR.LogLevel.Information)
         .build();
 
       newConnection
