@@ -9,9 +9,9 @@ import MeetingControlBar from "../components/MeetingPage/MeetingControlBar";
 import { MainContent } from "../components/MeetingPage/MainContent.styled";
 import { MeetingSidebar } from "../components/MeetingPage/MeetingSidebar.styled";
 
-interface MeetingRoomProps {
+type MeetingRoomProps = {
   connection: HubConnection | null;
-}
+};
 
 export default function MeetingRoom({ connection }: MeetingRoomProps) {
   const navigate = useNavigate();
@@ -41,7 +41,9 @@ export default function MeetingRoom({ connection }: MeetingRoomProps) {
       .then(() => {
         isConnected.current = false;
       });
-  }, [connection, meetingId, isConnected]);
+
+    navigate("/");
+  }, [connection, meetingId, isConnected, navigate]);
 
   const handleReceiveMessage = useCallback((message: ChatMessage) => {
     console.log("Message received");
@@ -95,7 +97,7 @@ export default function MeetingRoom({ connection }: MeetingRoomProps) {
           <ChatBox messages={messages} onSend={sendMessage} />
         </MeetingSidebar>
       </MainContent>
-      <MeetingControlBar />
+      <MeetingControlBar onLeave={leaveMeeting} />
     </MeetingRoomStyled>
   );
 }

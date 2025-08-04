@@ -3,10 +3,10 @@ import MessageInput from "./MessageInput.tsx";
 import type { ChatMessage } from "../../../types/chatMessage.ts";
 import { ChatBoxStyled } from "./ChatBox.styled.tsx";
 
-interface ChatBoxProps {
+type ChatBoxProps = {
   messages: Array<ChatMessage>;
   onSend: (message: string) => void;
-}
+};
 
 function ChatBox({ messages, onSend }: ChatBoxProps) {
   return (

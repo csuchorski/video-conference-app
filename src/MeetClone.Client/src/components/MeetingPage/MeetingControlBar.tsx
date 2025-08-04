@@ -1,10 +1,17 @@
 import { MeetingControlBarStyled } from "../MeetingControlBar.styled";
+import { Button } from "../styles/Button.styled";
 
-function MeetingControlBar() {
+type Props = {
+  onLeave: () => void;
+};
+
+function MeetingControlBar({ onLeave }: Props) {
   return (
     <MeetingControlBarStyled>
-      <button>Leave</button>
-      <button>Mute</button>
+      <Button color="red" onClick={onLeave}>
+        Leave
+      </Button>
+      <Button>Mute</Button>
     </MeetingControlBarStyled>
   );
 }
