@@ -49,6 +49,10 @@ export default function MeetingRoom({ connection }: MeetingRoomProps) {
     setMessages((prevList) => [...prevList, message]);
   }, []);
 
+  const handleNewUserJoined = useCallback((user: string) => {
+    console.log("New user joined");
+  }, []);
+
   const sendMessage = useCallback(
     (message: string) => {
       connection?.invoke(
@@ -67,26 +71,31 @@ export default function MeetingRoom({ connection }: MeetingRoomProps) {
       navigate("/");
       return;
     }
+  }, [connection, navigate]);
 
-    if (!isConnected.current) {
+  useEffect(() => {
+    if (connection && !isConnected.current && meetingId) {
       joinMeeting();
     }
 
+    return () => {
+      if (isConnected.current) {
+        leaveMeeting();
+      }
+    };
+  }, [connection, meetingId, joinMeeting, leaveMeeting]);
+
+  useEffect(() => {
+    if (!connection) return;
+
     connection?.on("ReceiveMessage", handleReceiveMessage);
+    connection?.on("NewUserJoined", handleNewUserJoined);
 
     return () => {
       connection?.off("ReceiveMessage", handleReceiveMessage);
-      leaveMeeting();
+      connection?.off("NewUserJoined", handleNewUserJoined);
     };
-  }, [
-    connection,
-    meetingId,
-    isConnected,
-    navigate,
-    joinMeeting,
-    leaveMeeting,
-    handleReceiveMessage,
-  ]);
+  }, [connection, handleReceiveMessage, handleNewUserJoined]);
 
   return (
     <MeetingRoomStyled>
