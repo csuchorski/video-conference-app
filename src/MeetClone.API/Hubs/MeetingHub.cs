@@ -6,7 +6,7 @@ namespace MeetClone.API.Hubs
     {
         public async Task GetAvailableMeetings(string user)
         {
-            string message = "1234";
+            var message = "1234";
             await Clients.User(user).SendAsync("ReceiveGroupList", message);
         }
 
@@ -14,7 +14,8 @@ namespace MeetClone.API.Hubs
         {
             await Groups.AddToGroupAsync(user, meetingId);
 
-            string message = $"User {user} joined the meeting";
+            var message = $"User {user} joined the meeting";
+            await Clients.Group(meetingId).SendAsync("NewUserJoined", new { user });
             await Clients.Group(meetingId).SendAsync("ReceiveMessage", new { sender = "SYSTEM", content = message });
         }
 
@@ -22,7 +23,7 @@ namespace MeetClone.API.Hubs
         {
             await Groups.RemoveFromGroupAsync(user, meetingId);
 
-            string message = $"User {user} left the meeting";
+            var message = $"User {user} left the meeting";
             await Clients.Group(meetingId).SendAsync("ReceiveMessage", new { sender = "SYSTEM", content = message });
         }
 
