@@ -19,6 +19,13 @@ export default function MeetingRoom({ connection }: MeetingRoomProps) {
   const isConnected = useRef(false);
   const [messages, setMessages] = useState<Array<ChatMessage>>([]);
 
+  const localVideoRef = useRef<HTMLVideoElement | null>(null);
+  const localStream = useRef<MediaStream | null>(null);
+  const [remoteStreams, setRemoteStreams] = useState<{
+    [id: string]: MediaStream;
+  }>({});
+  const peerConnections = useRef<{ [id: string]: RTCPeerConnection }>({});
+
   const joinMeeting = useCallback(() => {
     if (!connection || !meetingId) return;
 
@@ -43,6 +50,31 @@ export default function MeetingRoom({ connection }: MeetingRoomProps) {
         navigate("/");
       });
   }, [connection, meetingId, isConnected, navigate]);
+
+  const createPeerConnection = useCallback(
+    (userId: string): RTCPeerConnection => {
+      const iceServers: RTCIceServer[] = [
+        { urls: "stun:stun.l.google.com:19302" },
+      ];
+
+      const peerConnection = new RTCPeerConnection({ iceServers });
+      peerConnection.onicecandidate = (event) => {
+        if (!event.candidate) return;
+        connection?.invoke("SendIceCandidate", userId, event.candidate);
+      };
+
+      peerConnection.ontrack = (event) => {
+        setRemoteStreams((prev) => ({
+          ...prev,
+          [userId]: event.streams[0],
+        }));
+      };
+
+      peerConnections.current[userId] = peerConnection;
+      return peerConnection;
+    },
+    [connection]
+  );
 
   const handleReceiveMessage = useCallback((message: ChatMessage) => {
     console.log("Message received");
