@@ -83,7 +83,62 @@ export default function MeetingRoom({ connection }: MeetingRoomProps) {
 
   const handleNewUserJoined = useCallback((user: string) => {
     console.log("New user joined");
-  }, []);
+      if (!localStream.current || peerConnections.current[userId]) return;
+
+      const peerConnection = createPeerConnection(userId);
+      localStream.current
+        .getTracks()
+        .forEach((track) =>
+          peerConnection.addTrack(track, localStream.current!)
+        );
+
+      const offer = await peerConnection.createOffer();
+      await peerConnection.setLocalDescription(offer);
+
+      connection?.invoke("SendOffer", userId, offer);
+    },
+    [connection, createPeerConnection]
+  );
+
+  const handleReceiveOffer = useCallback(
+    async (fromUserId: string, offer: RTCSessionDescriptionInit) => {
+      const peerConnection = createPeerConnection(fromUserId);
+      await peerConnection.setRemoteDescription(
+        new RTCSessionDescription(offer)
+      );
+
+      localStream.current
+        ?.getTracks()
+        .forEach((track: MediaStreamTrack) =>
+          peerConnection.addTrack(track, localStream.current!)
+        );
+
+      const answer = await peerConnection.createAnswer();
+      await peerConnection.setLocalDescription(answer);
+
+      connection?.invoke("SendAnswer", fromUserId, answer);
+    },
+    [connection, createPeerConnection]
+  );
+
+  const handleReceiveAnswer = useCallback(
+    async (fromUserId: string, answer: RTCSessionDescriptionInit) => {
+      peerConnections.current[fromUserId].setRemoteDescription(
+        new RTCSessionDescription(answer)
+      );
+    },
+    []
+  );
+
+  const handleReceiveIceCandidate = useCallback(
+    async (fromUserId: string, candidate: RTCIceCandidateInit) => {
+      const peerConnection = peerConnections.current[fromUserId];
+      if (peerConnection) {
+        await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+      }
+    },
+    []
+  );
 
   const sendMessage = useCallback(
     (message: string) => {
