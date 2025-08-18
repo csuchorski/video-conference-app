@@ -81,7 +81,8 @@ export default function MeetingRoom({ connection }: MeetingRoomProps) {
     setMessages((prevList) => [...prevList, message]);
   }, []);
 
-  const handleNewUserJoined = useCallback((user: string) => {
+  const handleNewUserJoined = useCallback(
+    async (userId: string) => {
     console.log("New user joined");
       if (!localStream.current || peerConnections.current[userId]) return;
 
@@ -177,12 +178,37 @@ export default function MeetingRoom({ connection }: MeetingRoomProps) {
 
     connection?.on("ReceiveMessage", handleReceiveMessage);
     connection?.on("NewUserJoined", handleNewUserJoined);
-
+    connection?.on("ReceiveOffer", handleReceiveOffer);
+    connection?.on("ReceiveAnswer", handleReceiveAnswer);
+    connection?.on("ReceiveIceCandidate", handleReceiveIceCandidate);
     return () => {
       connection?.off("ReceiveMessage", handleReceiveMessage);
       connection?.off("NewUserJoined", handleNewUserJoined);
+      connection?.off("ReceiveOffer", handleReceiveOffer);
+      connection?.off("ReceiveAnswer", handleReceiveAnswer);
+      connection?.off("ReceiveIceCandidate", handleReceiveIceCandidate);
     };
-  }, [connection, handleReceiveMessage, handleNewUserJoined]);
+  }, [
+    connection,
+    handleReceiveMessage,
+    handleNewUserJoined,
+    handleReceiveOffer,
+    handleReceiveAnswer,
+    handleReceiveIceCandidate,
+  ]);
+
+  useEffect(() => {
+    (async () => {
+      localStream.current = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true,
+      });
+
+      if (localVideoRef.current && localStream.current) {
+        localVideoRef.current.srcObject = localStream.current;
+      }
+    })();
+  }, []);
 
   return (
     <MeetingRoomStyled>
