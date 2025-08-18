@@ -8,6 +8,7 @@ import { VideoContainer } from "../components/MeetingPage/VideoContainer.styled"
 import MeetingControlBar from "../components/MeetingPage/MeetingControlBar";
 import { MainContent } from "../components/MeetingPage/MainContent.styled";
 import { MeetingSidebar } from "../components/MeetingPage/MeetingSidebar.styled";
+import VideoTile from "../components/MeetingPage/VideoTile";
 
 type MeetingRoomProps = {
   connection: HubConnection | null;
@@ -83,7 +84,7 @@ export default function MeetingRoom({ connection }: MeetingRoomProps) {
 
   const handleNewUserJoined = useCallback(
     async (userId: string) => {
-    console.log("New user joined");
+      console.log("New user joined");
       if (!localStream.current || peerConnections.current[userId]) return;
 
       const peerConnection = createPeerConnection(userId);
@@ -213,7 +214,16 @@ export default function MeetingRoom({ connection }: MeetingRoomProps) {
   return (
     <MeetingRoomStyled>
       <MainContent>
-        <VideoContainer></VideoContainer>
+        <VideoContainer>
+          <VideoTile
+            key={connection?.connectionId}
+            stream={localStream.current}
+            userId={connection?.connectionId}
+          />
+          {Object.entries(remoteStreams).map(([userId, stream]) => (
+            <VideoTile key={userId} stream={stream} userId={userId} />
+          ))}
+        </VideoContainer>
         <MeetingSidebar>
           <ChatBox messages={messages} onSend={sendMessage} />
         </MeetingSidebar>
