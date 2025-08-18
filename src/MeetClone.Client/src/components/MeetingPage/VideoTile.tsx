@@ -2,8 +2,8 @@ import { useEffect, useRef } from "react";
 import { VideoTileStyled } from "./VideoTile.styled";
 
 type VideoTileProps = {
-  stream: MediaStream;
-  userId: string;
+  stream: MediaStream | null;
+  userId?: string | null;
 };
 
 export default function VideoTile({ stream, userId }: VideoTileProps) {
