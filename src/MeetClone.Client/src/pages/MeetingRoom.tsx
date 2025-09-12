@@ -20,8 +20,8 @@ export default function MeetingRoom({ connection }: MeetingRoomProps) {
   const isConnected = useRef(false);
   const [messages, setMessages] = useState<Array<ChatMessage>>([]);
 
-  const localVideoRef = useRef<HTMLVideoElement | null>(null);
-  const localStream = useRef<MediaStream | null>(null);
+  // const localVideoRef = useRef<HTMLVideoElement | null>(null);
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStreams, setRemoteStreams] = useState<{
     [id: string]: MediaStream;
   }>({});
@@ -85,14 +85,12 @@ export default function MeetingRoom({ connection }: MeetingRoomProps) {
   const handleNewUserJoined = useCallback(
     async (userId: string) => {
       console.log("New user joined");
-      if (!localStream.current || peerConnections.current[userId]) return;
+      if (!localStream || peerConnections.current[userId]) return;
 
       const peerConnection = createPeerConnection(userId);
-      localStream.current
+      localStream
         .getTracks()
-        .forEach((track) =>
-          peerConnection.addTrack(track, localStream.current!)
-        );
+        .forEach((track) => peerConnection.addTrack(track, localStream!));
 
       const offer = await peerConnection.createOffer();
       await peerConnection.setLocalDescription(offer);
@@ -109,10 +107,10 @@ export default function MeetingRoom({ connection }: MeetingRoomProps) {
         new RTCSessionDescription(offer)
       );
 
-      localStream.current
+      localStream
         ?.getTracks()
         .forEach((track: MediaStreamTrack) =>
-          peerConnection.addTrack(track, localStream.current!)
+          peerConnection.addTrack(track, localStream!)
         );
 
       const answer = await peerConnection.createAnswer();
@@ -200,13 +198,14 @@ export default function MeetingRoom({ connection }: MeetingRoomProps) {
 
   useEffect(() => {
     (async () => {
-      localStream.current = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true,
-      });
-
-      if (localVideoRef.current && localStream.current) {
-        localVideoRef.current.srcObject = localStream.current;
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: true,
+        });
+        setLocalStream(stream);
+      } catch (err) {
+        console.error(err);
       }
     })();
   }, []);
@@ -217,7 +216,7 @@ export default function MeetingRoom({ connection }: MeetingRoomProps) {
         <VideoContainer>
           <VideoTile
             key={connection?.connectionId}
-            stream={localStream.current}
+            stream={localStream}
             userId={connection?.connectionId}
           />
           {Object.entries(remoteStreams).map(([userId, stream]) => (
