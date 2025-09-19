@@ -1,14 +1,17 @@
-﻿using MeetClone.API.Dtos;
+﻿using System.Diagnostics;
+using MeetClone.API.Dtos;
 using Microsoft.AspNetCore.SignalR;
 
 namespace MeetClone.API.Hubs
 {
     public class MeetingHub : Hub
     {
-        public async Task GetAvailableMeetings(string user)
+        private readonly ILogger<MeetingHub> _logger;
+
+        public MeetingHub(ILogger<MeetingHub> logger)
         {
-            var message = "1234";
-            await Clients.User(user).SendAsync("ReceiveGroupList", message);
+            _logger = logger;
+            _logger.LogInformation($"Created hub");
         }
 
         public async Task JoinMeeting(string user, string meetingId)
@@ -16,7 +19,7 @@ namespace MeetClone.API.Hubs
             await Groups.AddToGroupAsync(user, meetingId);
 
             var message = $"User {user} joined the meeting";
-            await Clients.Group(meetingId).SendAsync("NewUserJoined", new { user });
+            await Clients.Group(meetingId).SendAsync("NewUserJoined", user);
             await Clients.Group(meetingId).SendAsync("ReceiveMessage", new { sender = "SYSTEM", content = message });
         }
 
@@ -33,19 +36,46 @@ namespace MeetClone.API.Hubs
             await Clients.Group(meetingId).SendAsync("ReceiveMessage", new { sender = user, content = message });
         }
 
-        public async Task SendOffer(string toUserId, RTCSessionDescriptionInit offer)
+        public async Task SendOffer(string toUserId, RTCSessionDescription offer)
         {
-            await Clients.User(toUserId).SendAsync("ReceiveOffer", Context.ConnectionId, offer);
+            _logger.LogInformation($"Sending offer to {toUserId}");
+            try
+            {
+                await Clients.Client(toUserId).SendAsync("ReceiveOffer", Context.ConnectionId, offer);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e.Message, $"Error sending offer to {toUserId}");
+                throw;
+            }
         }
 
-        public async Task SendAnswer(string toUserId, RTCSessionDescriptionInit answer)
+        public async Task SendAnswer(string toUserId, RTCSessionDescription answer)
         {
-            await Clients.User(toUserId).SendAsync("ReceiveAnswer", Context.ConnectionId, answer);
+            _logger.LogInformation($"Sending answer to {toUserId}");
+            try
+            {
+                await Clients.Client(toUserId).SendAsync("ReceiveAnswer", Context.ConnectionId, answer);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e.Message, $"Error sending answer to {toUserId}");
+                throw;
+            }
         }
 
         public async Task SendIceCandidate(string toUserId, RTCIceCandidateInit iceCandidate)
         {
-            await Clients.User(toUserId).SendAsync("ReceiveIceCandidate", Context.ConnectionId, iceCandidate);
+            _logger.LogInformation($"Sending ICE candidate to {toUserId}");
+            try
+            {
+                await Clients.Client(toUserId).SendAsync("ReceiveIceCandidate", Context.ConnectionId, iceCandidate);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e.Message, $"Error sending ICE candidate to {toUserId}");
+                throw;
+            }
         }
     }
 }
