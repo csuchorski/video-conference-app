@@ -1,102 +1,249 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {useCallback, useEffect, useRef, useState} from "react";
 import ChatBox from "../components/MeetingPage/ChatBox/ChatBox";
-import type { ChatMessage } from "../types/chatMessage";
-import { HubConnectionState, type HubConnection } from "@microsoft/signalr";
-import { useNavigate, useParams } from "react-router";
+import type {ChatMessage} from "../types/chatMessage";
+import {HubConnectionState, type HubConnection} from "@microsoft/signalr";
+import {useNavigate, useParams} from "react-router";
 import MeetingRoomStyled from "./MeetingRoom.styled";
-import { VideoContainer } from "../components/MeetingPage/VideoContainer.styled";
+import {VideoContainer} from "../components/MeetingPage/VideoContainer.styled";
 import MeetingControlBar from "../components/MeetingPage/MeetingControlBar";
-import { MainContent } from "../components/MeetingPage/MainContent.styled";
-import { MeetingSidebar } from "../components/MeetingPage/MeetingSidebar.styled";
+import {MainContent} from "../components/MeetingPage/MainContent.styled";
+import {MeetingSidebar} from "../components/MeetingPage/MeetingSidebar.styled";
+import VideoTile from "../components/MeetingPage/VideoTile";
 
 type MeetingRoomProps = {
-  connection: HubConnection | null;
+    connection: HubConnection | null;
 };
 
-export default function MeetingRoom({ connection }: MeetingRoomProps) {
-  const navigate = useNavigate();
-  const { meetingId } = useParams();
-  const isConnected = useRef(false);
-  const [messages, setMessages] = useState<Array<ChatMessage>>([]);
+export default function MeetingRoom({connection}: MeetingRoomProps) {
+    const navigate = useNavigate();
+    const {meetingId} = useParams();
+    const isConnected = useRef(false);
+    const [messages, setMessages] = useState<Array<ChatMessage>>([]);
 
-  const joinMeeting = useCallback(() => {
-    if (!connection || !meetingId) return;
+    const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+    const [remoteStreams, setRemoteStreams] = useState<{
+        [id: string]: MediaStream;
+    }>({});
 
-    console.log("Joining meeting");
+    const videoTiles = Object.entries(remoteStreams).map(([userId, stream]) => (
+        <VideoTile key={userId} stream={stream} userId={userId}/>
+    ));
 
-    connection
-      ?.invoke("JoinMeeting", connection.connectionId, meetingId)
-      .then(() => {
-        isConnected.current = true;
-      });
-  }, [connection, meetingId]);
+    const peerConnections = useRef<{ [id: string]: RTCPeerConnection }>({});
 
-  const leaveMeeting = useCallback(() => {
-    if (!connection || !meetingId || !isConnected.current) return;
+    const joinMeeting = useCallback(() => {
+        if (!connection || !meetingId) return;
 
-    console.log("Leaving meeting");
+        console.log("Joining meeting");
 
-    connection
-      ?.invoke("LeaveMeeting", connection.connectionId, meetingId)
-      .then(() => {
-        isConnected.current = false;
-        navigate("/");
-      });
-  }, [connection, meetingId, isConnected, navigate]);
+        connection
+            ?.invoke("JoinMeeting", connection.connectionId, meetingId)
+            .then(() => {
+                isConnected.current = true;
+            });
+    }, [connection, meetingId]);
 
-  const handleReceiveMessage = useCallback((message: ChatMessage) => {
-    console.log("Message received");
-    setMessages((prevList) => [...prevList, message]);
-  }, []);
+    const leaveMeeting = useCallback(() => {
+        if (!connection || !meetingId || !isConnected.current) return;
 
-  const sendMessage = useCallback(
-    (message: string) => {
-      connection?.invoke(
-        "SendMessageToMeeting",
-        connection?.connectionId,
-        meetingId,
-        message
-      );
-    },
-    [connection, meetingId]
-  );
+        console.log("Leaving meeting");
 
-  useEffect(() => {
-    if (!connection || connection.state !== HubConnectionState.Connected) {
-      console.log("No connection in MeetingRoom");
-      navigate("/");
-      return;
-    }
+        connection
+            ?.invoke("LeaveMeeting", connection.connectionId, meetingId)
+            .then(() => {
+                isConnected.current = false;
+                navigate("/");
+            });
+    }, [connection, meetingId, isConnected, navigate]);
 
-    if (!isConnected.current) {
-      joinMeeting();
-    }
+    const createPeerConnection = useCallback(
+            (userId: string): RTCPeerConnection => {
+                const iceServers: RTCIceServer[] = [
+                    {urls: "stun:stun.l.google.com:19302"},
+                ];
 
-    connection?.on("ReceiveMessage", handleReceiveMessage);
+                const peerConnection = new RTCPeerConnection({iceServers});
+                peerConnection.onicecandidate = (event: RTCPeerConnectionIceEvent) => {
+                    if (event.candidate) {
+                        connection?.invoke("SendIceCandidate", userId, event.candidate);
+                    }
+                };
 
-    return () => {
-      connection?.off("ReceiveMessage", handleReceiveMessage);
-      leaveMeeting();
-    };
-  }, [
-    connection,
-    meetingId,
-    isConnected,
-    navigate,
-    joinMeeting,
-    leaveMeeting,
-    handleReceiveMessage,
-  ]);
+                peerConnection.ontrack = (event: RTCTrackEvent) => {
+                    setRemoteStreams((prev) => ({
+                        ...prev,
+                        [userId]: event.streams[0],
+                    }));
+                };
 
-  return (
-    <MeetingRoomStyled>
-      <MainContent>
-        <VideoContainer></VideoContainer>
-        <MeetingSidebar>
-          <ChatBox messages={messages} onSend={sendMessage} />
-        </MeetingSidebar>
-      </MainContent>
-      <MeetingControlBar onLeave={leaveMeeting} />
-    </MeetingRoomStyled>
-  );
+                peerConnection.onnegotiationneeded = (_: Event) => {
+                    peerConnection
+                        .createOffer()
+                        .then((offer) => peerConnection.setLocalDescription(offer))
+                        .then(() => {
+                            connection?.invoke("SendOffer", userId, {
+                                type: peerConnection.localDescription?.type,
+                                sdp: peerConnection.localDescription?.sdp,
+                            });
+                        })
+                        .catch((err) => console.log(err));
+                };
+                peerConnections.current[userId] = peerConnection;
+                return peerConnection;
+            },
+            [connection]
+        )
+    ;
+
+    const handleReceiveMessage = useCallback((message: ChatMessage) => {
+        console.log("Message received");
+        setMessages((prevList) => [...prevList, message]);
+    }, []);
+
+    const handleNewUserJoined = useCallback(
+        async (userId: string) => {
+            console.log("New user joined");
+            if (!localStream || peerConnections.current[userId]) return;
+
+            const peerConnection = createPeerConnection(userId);
+            localStream
+                .getTracks()
+                .forEach((track) => peerConnection.addTrack(track, localStream));
+        },
+        [createPeerConnection, localStream]
+    );
+
+    const handleReceiveOffer = useCallback(
+        async (fromUserId: string, offer: RTCSessionDescriptionInit) => {
+            console.log("Received Offer");
+            const peerConnection = createPeerConnection(fromUserId);
+            await peerConnection
+                .setRemoteDescription(offer)
+                .then(() => {
+                    localStream
+                        ?.getTracks()
+                        .forEach((track: MediaStreamTrack) =>
+                            peerConnection.addTrack(track, localStream)
+                        );
+                })
+                .then(() => peerConnection.createAnswer())
+                .then((answer) => peerConnection.setLocalDescription(answer))
+                .then(() => {
+                    connection?.invoke("SendAnswer", fromUserId, {
+                        Type: peerConnection.localDescription?.type,
+                        Sdp: peerConnection.localDescription?.sdp,
+                    });
+                })
+                .catch((err) => console.log(err));
+        },
+        [connection, createPeerConnection, localStream]
+    );
+
+    const handleReceiveAnswer = useCallback(
+        async (fromUserId: string, answer: RTCSessionDescriptionInit) => {
+            peerConnections.current[fromUserId].setRemoteDescription(answer);
+        },
+        []
+    );
+
+    const handleReceiveIceCandidate = useCallback(
+        async (fromUserId: string, candidateInit: RTCIceCandidateInit) => {
+            const peerConnection = peerConnections.current[fromUserId];
+            if (peerConnection) {
+                await peerConnection.addIceCandidate(
+                    new RTCIceCandidate(candidateInit)
+                );
+            }
+        },
+        []
+    );
+
+    const sendMessage = useCallback(
+        (message: string) => {
+            connection?.invoke(
+                "SendMessageToMeeting",
+                connection?.connectionId,
+                meetingId,
+                message
+            );
+        },
+        [connection, meetingId]
+    );
+
+    useEffect(() => {
+        if (!connection || connection.state !== HubConnectionState.Connected) {
+            console.log("No connection in MeetingRoom");
+            navigate("/");
+            return;
+        }
+    }, [connection, navigate]);
+
+    useEffect(() => {
+        if (connection && !isConnected.current && meetingId) {
+            joinMeeting();
+        }
+
+        return () => {
+            if (isConnected.current) {
+                leaveMeeting();
+            }
+        };
+    }, [connection, meetingId, joinMeeting, leaveMeeting]);
+
+    useEffect(() => {
+        if (!connection) return;
+
+        connection?.on("ReceiveMessage", handleReceiveMessage);
+        connection?.on("NewUserJoined", handleNewUserJoined);
+        connection?.on("ReceiveOffer", handleReceiveOffer);
+        connection?.on("ReceiveAnswer", handleReceiveAnswer);
+        connection?.on("ReceiveIceCandidate", handleReceiveIceCandidate);
+        return () => {
+            connection?.off("ReceiveMessage", handleReceiveMessage);
+            connection?.off("NewUserJoined", handleNewUserJoined);
+            connection?.off("ReceiveOffer", handleReceiveOffer);
+            connection?.off("ReceiveAnswer", handleReceiveAnswer);
+            connection?.off("ReceiveIceCandidate", handleReceiveIceCandidate);
+        };
+    }, [
+        connection,
+        handleReceiveMessage,
+        handleNewUserJoined,
+        handleReceiveOffer,
+        handleReceiveAnswer,
+        handleReceiveIceCandidate,
+    ]);
+
+    useEffect(() => {
+        (async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: true,
+                    audio: true,
+                });
+                setLocalStream(stream);
+            } catch (err) {
+                console.error(err);
+            }
+        })();
+    }, []);
+
+    return (
+        <MeetingRoomStyled>
+            <MainContent>
+                <VideoContainer>
+                    <VideoTile
+                        key={connection?.connectionId}
+                        stream={localStream}
+                        userId={connection?.connectionId}
+                    />
+                    {videoTiles}
+                </VideoContainer>
+                <MeetingSidebar>
+                    <ChatBox messages={messages} onSend={sendMessage}/>
+                </MeetingSidebar>
+            </MainContent>
+            <MeetingControlBar onLeave={leaveMeeting}/>
+        </MeetingRoomStyled>
+    );
 }
