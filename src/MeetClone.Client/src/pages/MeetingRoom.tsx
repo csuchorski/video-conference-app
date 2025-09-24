@@ -44,16 +44,22 @@ export default function MeetingRoom({ connection }: MeetingRoomProps) {
   }, [localStream, connection, meetingId]);
 
   const leaveMeeting = useCallback(() => {
-    if (!connection || !meetingId || !isConnected.current) return;
-
-    console.log("Leaving meeting");
-
-    connection
-      ?.invoke("LeaveMeeting", connection.connectionId, meetingId)
-      .then(() => {
-        isConnected.current = false;
-        navigate("/");
-      });
+    if (
+      connection &&
+      connection.state == HubConnectionState.Connected &&
+      meetingId &&
+      isConnected.current
+    ) {
+      connection
+        ?.invoke("LeaveMeeting", connection.connectionId, meetingId)
+        .then(() => {
+          isConnected.current = false;
+          navigate("/");
+        })
+        .catch((e: Error) => {
+          console.error(e.message);
+        });
+    }
   }, [connection, meetingId, isConnected, navigate]);
 
   useEffect(() => {
@@ -70,6 +76,18 @@ export default function MeetingRoom({ connection }: MeetingRoomProps) {
     })();
   }, []);
 
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (connection && meetingId && isConnected.current) {
+        leaveMeeting();
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  });
+
   const createPeerConnection = useCallback(
     (userId: string): RTCPeerConnection => {
       const iceServers: RTCIceServer[] = [
@@ -84,14 +102,14 @@ export default function MeetingRoom({ connection }: MeetingRoomProps) {
       };
 
       peerConnection.ontrack = (event: RTCTrackEvent) => {
-        console.log("Received remote track");
+        // console.log("Received remote track");
         setRemoteStreams((prev) => ({
           ...prev,
           [userId]: event.streams[0],
         }));
       };
 
-      peerConnection.onnegotiationneeded = (_: Event) => {
+      peerConnection.onnegotiationneeded = () => {
         peerConnection
           .createOffer()
           .then((offer) => peerConnection.setLocalDescription(offer))
@@ -109,13 +127,13 @@ export default function MeetingRoom({ connection }: MeetingRoomProps) {
     [connection]
   );
   const handleReceiveMessage = useCallback((message: ChatMessage) => {
-    console.log("Message received");
+    // console.log("Message received");
     setMessages((prevList) => [...prevList, message]);
   }, []);
 
   const handleNewUserJoined = useCallback(
     async (userId: string) => {
-      console.log("New user joined");
+      //   console.log("New user joined");
       if (!localStream || peerConnections.current[userId]) return;
 
       const peerConnection = createPeerConnection(userId);
@@ -139,13 +157,13 @@ export default function MeetingRoom({ connection }: MeetingRoomProps) {
 
   const handleReceiveOffer = useCallback(
     async (fromUserId: string, offer: RTCSessionDescriptionInit) => {
-      console.log("Received Offer");
+      //   console.log("Received Offer");
       const peerConnection = createPeerConnection(fromUserId);
       await peerConnection
         .setRemoteDescription(offer)
         .then(() => {
           localStream?.getTracks().forEach((track: MediaStreamTrack) => {
-            console.log("Adding a track to answer");
+            // console.log("Adding a track to answer");
             peerConnection.addTrack(track, localStream);
           });
         })
@@ -164,7 +182,7 @@ export default function MeetingRoom({ connection }: MeetingRoomProps) {
 
   const handleReceiveAnswer = useCallback(
     async (fromUserId: string, answer: RTCSessionDescriptionInit) => {
-      console.log("Received answer");
+      //   console.log("Received answer");
       peerConnections.current[fromUserId].setRemoteDescription(answer);
     },
     []
@@ -212,7 +230,7 @@ export default function MeetingRoom({ connection }: MeetingRoomProps) {
         leaveMeeting();
       }
     };
-  }, [connection, meetingId, joinMeeting, leaveMeeting]);
+  }, [connection, meetingId, isConnected, joinMeeting, leaveMeeting]);
 
   useEffect(() => {
     if (!connection) return;
