@@ -16,7 +16,7 @@ export default function VideoTile({ stream, userId }: VideoTileProps) {
 
   return (
     <VideoTileStyled>
-      <video ref={videoRef} autoPlay playsInline />
+      <video ref={videoRef} autoPlay playsInline muted />
       <span>{userId}</span>
     </VideoTileStyled>
   );
