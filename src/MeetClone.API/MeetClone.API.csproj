@@ -11,9 +11,4 @@
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\MeetClone.Application\MeetClone.Application.csproj" />
-    <ProjectReference Include="..\MeetClone.Infrastructure\MeetClone.Infrastructure.csproj" />
-  </ItemGroup>
-
 </Project>
