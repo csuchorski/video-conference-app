@@ -126,6 +126,17 @@ export default function MeetingRoom({ connection }: MeetingRoomProps) {
     [createPeerConnection, localStream]
   );
 
+  const handleUserLeft = useCallback(async (userId: string) => {
+    if (!peerConnections.current[userId]) return;
+
+    delete peerConnections.current[userId];
+    setRemoteStreams((prev) => {
+      const newStreams = { ...prev };
+      delete newStreams[userId];
+      return newStreams;
+    });
+  }, []);
+
   const handleReceiveOffer = useCallback(
     async (fromUserId: string, offer: RTCSessionDescriptionInit) => {
       console.log("Received Offer");
@@ -208,12 +219,14 @@ export default function MeetingRoom({ connection }: MeetingRoomProps) {
 
     connection?.on("ReceiveMessage", handleReceiveMessage);
     connection?.on("NewUserJoined", handleNewUserJoined);
+    connection?.on("UserLeft", handleUserLeft);
     connection?.on("ReceiveOffer", handleReceiveOffer);
     connection?.on("ReceiveAnswer", handleReceiveAnswer);
     connection?.on("ReceiveIceCandidate", handleReceiveIceCandidate);
     return () => {
       connection?.off("ReceiveMessage", handleReceiveMessage);
       connection?.off("NewUserJoined", handleNewUserJoined);
+      connection?.off("UserLeft", handleUserLeft);
       connection?.off("ReceiveOffer", handleReceiveOffer);
       connection?.off("ReceiveAnswer", handleReceiveAnswer);
       connection?.off("ReceiveIceCandidate", handleReceiveIceCandidate);
@@ -222,6 +235,7 @@ export default function MeetingRoom({ connection }: MeetingRoomProps) {
     connection,
     handleReceiveMessage,
     handleNewUserJoined,
+    handleUserLeft,
     handleReceiveOffer,
     handleReceiveAnswer,
     handleReceiveIceCandidate,
