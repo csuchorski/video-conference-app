@@ -19,7 +19,7 @@ namespace MeetClone.API.Hubs
             await Groups.AddToGroupAsync(user, meetingId);
 
             var message = $"User {user} joined the meeting";
-            await Clients.Group(meetingId).SendAsync("NewUserJoined", user);
+            await Clients.GroupExcept(meetingId, user).SendAsync("NewUserJoined", user);
             await Clients.Group(meetingId).SendAsync("ReceiveMessage", new { sender = "SYSTEM", content = message });
         }
 
