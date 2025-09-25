@@ -1,12 +1,16 @@
 import styled from "styled-components";
 
 export const VideoTileStyled = styled.div`
-    max-width: 200px;
-    max-height: 150px;
-    border: 1px solid black;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  aspect-ratio: 16/9;
+  border: 1px solid black;
 
-    & > video {
-        max-width: 100%;
-        max-height: 100%;
-    }
+  & > video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
 `;

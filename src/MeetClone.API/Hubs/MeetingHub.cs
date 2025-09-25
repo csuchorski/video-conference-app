@@ -28,6 +28,7 @@ namespace MeetClone.API.Hubs
             await Groups.RemoveFromGroupAsync(user, meetingId);
 
             var message = $"User {user} left the meeting";
+            await Clients.Group(meetingId).SendAsync("UserLeft", user);
             await Clients.Group(meetingId).SendAsync("ReceiveMessage", new { sender = "SYSTEM", content = message });
         }
 

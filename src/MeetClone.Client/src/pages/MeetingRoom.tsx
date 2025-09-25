@@ -29,6 +29,9 @@ export default function MeetingRoom({ connection }: MeetingRoomProps) {
     <VideoTile key={userId} stream={stream} userId={userId} />
   ));
 
+  const columns = Math.ceil(Math.sqrt(videoTiles.length + 1));
+  const rows = Math.ceil((videoTiles.length + 1) / columns);
+
   const peerConnections = useRef<{ [id: string]: RTCPeerConnection }>({});
 
   const joinMeeting = useCallback(() => {
@@ -44,16 +47,22 @@ export default function MeetingRoom({ connection }: MeetingRoomProps) {
   }, [localStream, connection, meetingId]);
 
   const leaveMeeting = useCallback(() => {
-    if (!connection || !meetingId || !isConnected.current) return;
-
-    console.log("Leaving meeting");
-
-    connection
-      ?.invoke("LeaveMeeting", connection.connectionId, meetingId)
-      .then(() => {
-        isConnected.current = false;
-        navigate("/");
-      });
+    if (
+      connection &&
+      connection.state == HubConnectionState.Connected &&
+      meetingId &&
+      isConnected.current
+    ) {
+      connection
+        ?.invoke("LeaveMeeting", connection.connectionId, meetingId)
+        .then(() => {
+          isConnected.current = false;
+          navigate("/");
+        })
+        .catch((e: Error) => {
+          console.error(e.message);
+        });
+    }
   }, [connection, meetingId, isConnected, navigate]);
 
   useEffect(() => {
@@ -70,6 +79,18 @@ export default function MeetingRoom({ connection }: MeetingRoomProps) {
     })();
   }, []);
 
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (connection && meetingId && isConnected.current) {
+        leaveMeeting();
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  });
+
   const createPeerConnection = useCallback(
     (userId: string): RTCPeerConnection => {
       const iceServers: RTCIceServer[] = [
@@ -84,14 +105,14 @@ export default function MeetingRoom({ connection }: MeetingRoomProps) {
       };
 
       peerConnection.ontrack = (event: RTCTrackEvent) => {
-        console.log("Received remote track");
+        // console.log("Received remote track");
         setRemoteStreams((prev) => ({
           ...prev,
           [userId]: event.streams[0],
         }));
       };
 
-      peerConnection.onnegotiationneeded = (_: Event) => {
+      peerConnection.onnegotiationneeded = () => {
         peerConnection
           .createOffer()
           .then((offer) => peerConnection.setLocalDescription(offer))
@@ -109,13 +130,13 @@ export default function MeetingRoom({ connection }: MeetingRoomProps) {
     [connection]
   );
   const handleReceiveMessage = useCallback((message: ChatMessage) => {
-    console.log("Message received");
+    // console.log("Message received");
     setMessages((prevList) => [...prevList, message]);
   }, []);
 
   const handleNewUserJoined = useCallback(
     async (userId: string) => {
-      console.log("New user joined");
+      //   console.log("New user joined");
       if (!localStream || peerConnections.current[userId]) return;
 
       const peerConnection = createPeerConnection(userId);
@@ -126,15 +147,26 @@ export default function MeetingRoom({ connection }: MeetingRoomProps) {
     [createPeerConnection, localStream]
   );
 
+  const handleUserLeft = useCallback(async (userId: string) => {
+    if (!peerConnections.current[userId]) return;
+
+    delete peerConnections.current[userId];
+    setRemoteStreams((prev) => {
+      const newStreams = { ...prev };
+      delete newStreams[userId];
+      return newStreams;
+    });
+  }, []);
+
   const handleReceiveOffer = useCallback(
     async (fromUserId: string, offer: RTCSessionDescriptionInit) => {
-      console.log("Received Offer");
+      //   console.log("Received Offer");
       const peerConnection = createPeerConnection(fromUserId);
       await peerConnection
         .setRemoteDescription(offer)
         .then(() => {
           localStream?.getTracks().forEach((track: MediaStreamTrack) => {
-            console.log("Adding a track to answer");
+            // console.log("Adding a track to answer");
             peerConnection.addTrack(track, localStream);
           });
         })
@@ -153,7 +185,7 @@ export default function MeetingRoom({ connection }: MeetingRoomProps) {
 
   const handleReceiveAnswer = useCallback(
     async (fromUserId: string, answer: RTCSessionDescriptionInit) => {
-      console.log("Received answer");
+      //   console.log("Received answer");
       peerConnections.current[fromUserId].setRemoteDescription(answer);
     },
     []
@@ -201,19 +233,21 @@ export default function MeetingRoom({ connection }: MeetingRoomProps) {
         leaveMeeting();
       }
     };
-  }, [connection, meetingId, joinMeeting, leaveMeeting]);
+  }, [connection, meetingId, isConnected, joinMeeting, leaveMeeting]);
 
   useEffect(() => {
     if (!connection) return;
 
     connection?.on("ReceiveMessage", handleReceiveMessage);
     connection?.on("NewUserJoined", handleNewUserJoined);
+    connection?.on("UserLeft", handleUserLeft);
     connection?.on("ReceiveOffer", handleReceiveOffer);
     connection?.on("ReceiveAnswer", handleReceiveAnswer);
     connection?.on("ReceiveIceCandidate", handleReceiveIceCandidate);
     return () => {
       connection?.off("ReceiveMessage", handleReceiveMessage);
       connection?.off("NewUserJoined", handleNewUserJoined);
+      connection?.off("UserLeft", handleUserLeft);
       connection?.off("ReceiveOffer", handleReceiveOffer);
       connection?.off("ReceiveAnswer", handleReceiveAnswer);
       connection?.off("ReceiveIceCandidate", handleReceiveIceCandidate);
@@ -222,6 +256,7 @@ export default function MeetingRoom({ connection }: MeetingRoomProps) {
     connection,
     handleReceiveMessage,
     handleNewUserJoined,
+    handleUserLeft,
     handleReceiveOffer,
     handleReceiveAnswer,
     handleReceiveIceCandidate,
@@ -230,7 +265,7 @@ export default function MeetingRoom({ connection }: MeetingRoomProps) {
   return (
     <MeetingRoomStyled>
       <MainContent>
-        <VideoContainer>
+        <VideoContainer columns={columns} rows={rows}>
           <VideoTile
             key={connection?.connectionId}
             stream={localStream}
