@@ -29,6 +29,9 @@ export default function MeetingRoom({ connection }: MeetingRoomProps) {
     <VideoTile key={userId} stream={stream} userId={userId} />
   ));
 
+  const columns = Math.ceil(Math.sqrt(videoTiles.length + 1));
+  const rows = Math.ceil((videoTiles.length + 1) / columns);
+
   const peerConnections = useRef<{ [id: string]: RTCPeerConnection }>({});
 
   const joinMeeting = useCallback(() => {
@@ -262,7 +265,7 @@ export default function MeetingRoom({ connection }: MeetingRoomProps) {
   return (
     <MeetingRoomStyled>
       <MainContent>
-        <VideoContainer>
+        <VideoContainer columns={columns} rows={rows}>
           <VideoTile
             key={connection?.connectionId}
             stream={localStream}
